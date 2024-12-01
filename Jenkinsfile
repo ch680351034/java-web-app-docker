@@ -1,40 +1,50 @@
-node{
-     
-    stage('SCM Checkout'){
-        git url: 'https://github.com/MithunTechnologiesDevOps/java-web-app-docker.git',branch: 'master'
+node {
+
+    def dockerImage = 'ch680351034/appone'
+    def dockerTag = 'latest'
+    def dockerCredentialId = 'dockerhub'
+
+    stage('clone repositary') {
+        git 'https://github.com/ch680351034/java-web-app-docker.git'
     }
-    
-    stage(" Maven Clean Package"){
-      def mavenHome =  tool name: "Maven-3.5.6", type: "maven"
-      def mavenCMD = "${mavenHome}/bin/mvn"
-      sh "${mavenCMD} clean package"
-      
-    } 
-    
-    
-    stage('Build Docker Image'){
-        sh 'docker build -t dockerhandson/java-web-app .'
-    }
-    
-    stage('Push Docker Image'){
-        withCredentials([string(credentialsId: 'Docker_Hub_Pwd', variable: 'Docker_Hub_Pwd')]) {
-          sh "docker login -u dockerhandson -p ${Docker_Hub_Pwd}"
+
+    stage('maven build') {
+        docker.image('maven:3.8.1-openjdk-11').inside {
+         sh 'pwd && ls -l '
+         sh "mvn clean package"
+         echo "build has been done"
+         sh 'pwd && ls -l '
+
         }
-        sh 'docker push dockerhandson/java-web-app'
-     }
-     
-      stage('Run Docker Image In Dev Server'){
-        
-        def dockerRun = ' docker run  -d -p 8080:8080 --name java-web-app dockerhandson/java-web-app'
-         
-         sshagent(['DOCKER_SERVER']) {
-          sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.20.72 docker stop java-web-app || true'
-          sh 'ssh  ubuntu@172.31.20.72 docker rm java-web-app || true'
-          sh 'ssh  ubuntu@172.31.20.72 docker rmi -f  $(docker images -q) || true'
-          sh "ssh  ubuntu@172.31.20.72 ${dockerRun}"
-       }
-       
+        //  def mvnHome = tool name: 'maven399', type: 'maven'
+        //  env.PATH = "${mvnHome}/bin:${env.PATH}"
+
     }
-     
-     
+
+    stage('Push to Docker Hub') {
+
+        docker.image('docker:latest').inside {
+
+        withDockerRegistry(credentialsId: 'dockerhub', url: 'https://index.docker.io/v1/') {
+
+        def app = docker.build("${dockerImage}:${dockerTag}")
+        app.push()              // Push with the default tag (e.g., 'latest')
+        app.push("${env.BUILD_NUMBER}")  // Push with the build number as the tag
+        
+        }
+
+        }
+
+      }
+    
+    stage('archive artifacts') {
+         archiveArtifacts artifacts: 'target/*.war', followSymlinks: false
+    }
+
+    stage('deploy to dev enviorment ') {
+
+          sh 'docker pull ch680351034/appone:latest'
+          sh 'docker run -d -p 9090:8080 ch680351034/appone:latest'    }
+
+    
 }
