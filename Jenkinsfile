@@ -43,23 +43,26 @@ node {
 
     stage('deploy to prod enviorment ') {
 
-          when {
-            branch 'master'
-        }
+         if (env.BRANCH_NAME == 'master') {
           sh 'docker pull ch680351034/appone:latest'
           sh 'docker rm -f prod-appone || true'
-          sh 'docker run -d --name prod-appone -p 9090:8080 ch680351034/appone:latest'    
+          sh 'docker run -d --name prod-appone -p 9090:8080 ch680351034/appone:latest'
+
+         }
+    
     }
 
    
    stage('deploy to dev enviorment ') {
 
-          when {
-            branch 'feature/*'
-        }
+         
+         if (env.BRANCH_NAME.startsWith('feature/')) {
           sh 'docker pull ch680351034/appone:latest'
           sh 'docker rm -f dev-appone || true'
           sh 'docker run -d --name dev-appone -p 9091:8080 ch680351034/appone:latest'    
+             
+         }
+
     }
 
     
