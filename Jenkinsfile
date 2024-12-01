@@ -44,7 +44,7 @@ node {
     stage('deploy to dev enviorment ') {
 
           sh 'docker pull ch680351034/appone:latest'
-          sh 'docker run -d -p 9090:8080 ch680351034/appone:latest'    }
+          sh 'docker run -d --name appone-p 9090:8080 ch680351034/appone:latest'    }
 
     
 }
